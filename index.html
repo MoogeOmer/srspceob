@@ -46,8 +46,10 @@
         const createStationSuccess = document.getElementById('createStationSuccess');
         
         let allStationCases = [];
+        let allCasesMap = {};
         let currentKebeleId = '';
         let suspectImageBase64 = '';
+        let pendingDeleteId = null;
 
         window.handleImageUpload = (event) => {
             const file = event.target.files[0];
@@ -172,16 +174,41 @@
             }
         };
 
-        window.deleteCaseRecord = async (caseId) => {
-            const confirmed = confirm("Ma hubtaa inaad tirtirto kiiskan? Tallaabadan lama celin karo.");
-            if (!confirmed) return;
+        window.deleteCaseRecord = async (caseId, btnElement) => {
+            if (!allCasesMap[caseId]) {
+                alert("Cilad: Xogta kiiska lama helin.");
+                return;
+            }
+
+            if (pendingDeleteId !== caseId) {
+                pendingDeleteId = caseId;
+                btnElement.textContent = "Ma hubtaa? Guji mar kale";
+                btnElement.classList.remove("bg-red-600", "hover:bg-red-700");
+                btnElement.classList.add("bg-amber-600", "hover:bg-amber-700");
+                setTimeout(() => {
+                    if (pendingDeleteId === caseId) {
+                        pendingDeleteId = null;
+                        btnElement.textContent = "Tirtir";
+                        btnElement.classList.remove("bg-amber-600", "hover:bg-amber-700");
+                        btnElement.classList.add("bg-red-600", "hover:bg-red-700");
+                    }
+                }, 4000);
+                return;
+            }
+
+            pendingDeleteId = null;
+            btnElement.disabled = true;
+            btnElement.textContent = "Waa la tirtirayaa...";
 
             try {
                 await deleteDoc(doc(db, "occurrence_books", caseId));
+                delete allCasesMap[caseId];
                 alert("Kiiska si guul leh ayaa loo tirtiray!");
                 loadSuperAdminFiles(db);
             } catch (err) {
                 alert("Cilad ayaa dhacday tirtiridda kiiska: " + err.message);
+                btnElement.disabled = false;
+                btnElement.textContent = "Tirtir";
             }
         };
 
@@ -192,7 +219,9 @@
                 const querySnapshot = await getDocs(q);
                 allStationCases = [];
                 querySnapshot.forEach((docSnap) => {
-                    allStationCases.push({ id: docSnap.id, ...docSnap.data() });
+                    const caseItem = { id: docSnap.id, ...docSnap.data() };
+                    allStationCases.push(caseItem);
+                    allCasesMap[caseItem.id] = caseItem;
                 });
                 renderStationCases(allStationCases);
             } catch (err) {
@@ -210,6 +239,7 @@
             }
             cases.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
             cases.forEach((item) => {
+                allCasesMap[item.id] = item;
                 const imgHtml = item.suspectImage ? `<div class="mt-2"><img src="${item.suspectImage}" alt="Sawirka Eedeysanaha" class="w-20 h-20 object-cover rounded border shadow-sm"></div>` : '';
                 const statusColor = item.status === 'Xalilay / Dhamaaday' ? 'bg-emerald-100 text-emerald-800' : (item.status === 'Maxkamad La Gudbiyey' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800');
                 
@@ -299,12 +329,13 @@
 
                 const kebeleMap = {};
                 querySnapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
+                    const data = { id: docSnap.id, ...docSnap.data() };
+                    allCasesMap[data.id] = data;
                     const kebele = data.kebeleid || data.kebeleId || 'Lama Aqoonsan';
                     if (!kebeleMap[kebele]) {
                         kebeleMap[kebele] = [];
                     }
-                    kebeleMap[kebele].push({ id: docSnap.id, ...data });
+                    kebeleMap[kebele].push(data);
                 });
 
                 Object.keys(kebeleMap).forEach((kebele) => {
@@ -323,7 +354,7 @@
                                     <span>Qeybta: ${item.category}</span>
                                     <div class="flex items-center space-x-2">
                                         <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${statusColor}">${item.status || 'Furan / Socda'}</span>
-                                        <button onclick="deleteCaseRecord('${item.id}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded text-xs font-semibold">Tirtir</button>
+                                        <button onclick="deleteCaseRecord('${item.id}', this)" class="bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded text-xs font-semibold">Tirtir</button>
                                     </div>
                                 </div>
                                 <p><strong>Soo Tabiye:</strong> ${item.informantName} (${item.informantPhone})</p>
