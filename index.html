@@ -10,7 +10,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC4fVazGFMzGuGx3XfYAVLIp8m-XD3lBOQ",
@@ -27,7 +27,7 @@
 
         window.appAuth = auth;
         window.appDb = db;
-        window.firebaseFns = { signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, where, serverTimestamp };
+        window.firebaseFns = { signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, query, where, serverTimestamp };
 
         const loginView = document.getElementById('loginView');
         const loadingView = document.getElementById('loadingView');
@@ -172,6 +172,19 @@
             }
         };
 
+        window.deleteCaseRecord = async (caseId) => {
+            const confirmed = confirm("Ma hubtaa inaad tirtirto kiiskan? Tallaabadan lama celin karo.");
+            if (!confirmed) return;
+
+            try {
+                await deleteDoc(doc(db, "occurrence_books", caseId));
+                alert("Kiiska si guul leh ayaa loo tirtiray!");
+                loadSuperAdminFiles(db);
+            } catch (err) {
+                alert("Cilad ayaa dhacday tirtiridda kiiska: " + err.message);
+            }
+        };
+
         async function loadStationCases(database, kebele) {
             const container = document.getElementById('stationCasesList');
             try {
@@ -306,9 +319,12 @@
                         
                         casesHtml += `
                             <div class="p-3 bg-white border-t space-y-1 text-sm">
-                                <div class="flex justify-between font-bold text-blue-900">
+                                <div class="flex justify-between items-center font-bold text-blue-900">
                                     <span>Qeybta: ${item.category}</span>
-                                    <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${statusColor}">${item.status || 'Furan / Socda'}</span>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${statusColor}">${item.status || 'Furan / Socda'}</span>
+                                        <button onclick="deleteCaseRecord('${item.id}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-0.5 rounded text-xs font-semibold">Tirtir</button>
+                                    </div>
                                 </div>
                                 <p><strong>Soo Tabiye:</strong> ${item.informantName} (${item.informantPhone})</p>
                                 <p><strong>Eedeysanaha:</strong> ${item.suspectName || 'Lama yaqaan'} (Tel: ${item.suspectPhone || 'Lama hayo'})</p>
@@ -346,7 +362,7 @@
             <div class="flex items-center space-x-3">
                 <img src="1000131909.jpg" alt="SRSP Logo" class="w-12 h-12 rounded-full border-2 border-white object-cover shadow">
                 <div>
-                    <h1 class="text-sm font-semibold tracking-wider text-blue-200">KOMISHINKA BOOLISKA DDS</h1>
+                    <h1 class="text-sm font-semibold tracking-wider text-blue-200">KOMISHINKA BOOLISKA DEGAANKA SOMALIDA (SRSP)</h1>
                     <p class="text-lg font-bold">Nidaamka OB-ga Qabaleeyada</p>
                 </div>
             </div>
